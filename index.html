@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>eBook Viewer with TOC and Navigation</title>
+  <style>
+    /* 기본 스타일 */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 10%;
+      padding: 0;
+      text-align: center;
+    }
+    .content-container {
+      padding-bottom: 80px; /* 하단 버튼 영역 고려 */
+    }
+    #ebook {
+      margin-top: 20px;
+    }
+    .page {
+      display: none;
+    }
+    .active {
+      display: block;
+    }
+    img {
+      max-width: 80%;
+      height: auto;
+    }
+    
+    /* 모달 스타일 */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 100;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+    .modal-content {
+      background-color: #fff;
+      padding: 20px;
+      border: 1px solid #888;
+      text-align: center;
+      position: relative;
+    }
+    /* 기본 모달 (학습목표, 음악 듣기) */
+    .modal-standard {
+      left: 0;
+      top: 0;
+      width: 80%;
+      max-width: 800px;
+      margin: 10% auto;
+    }
+    /* 목차 모달: 우측 고정 */
+    .modal-toc {
+      width: 400px;
+      top: 10%;
+      right: 100;
+      left: auto;
+      transform: translateY(-50%);
+      margin: 10;
+    }
+    .close {
+      color: #aaa;
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .video-controls {
+      margin-top: 10px;
+    }
+    .video-controls button {
+      margin: 0 5px;
+      padding: 5px 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    
+    /* 하단 버튼 스타일 */
+    #footerButtons {
+      background: #f0f0f0;
+      padding: 10px;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    #footerButtons button {
+      margin: 5px;
+      padding: 10px 15px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    
+    /* 목차 리스트 스타일 */
+    #tocList {
+      list-style: none;
+      padding: 0;
+      margin: 20px 0;
+      text-align: right;
+    }
+    #tocList li {
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
+      cursor: pointer;
+    }
+    #tocList li:hover {
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- eBook Viewer -->
+  <div class="content-container">
+    <div id="ebook">
+      <!-- eBook 페이지 요소들은 imageFiles 배열을 기반으로 동적으로 생성됩니다. -->
+    </div>
+  </div>
+
+  <!-- 하단 버튼 영역 -->
+  <div id="footerButtons">
+    <button id="learnBtn">학습목표</button>
+    <button id="musicBtn">음악 듣기</button>
+    <button id="tocBtn">목차</button>
+    <button id="prevPageBtn">이전 페이지</button>
+    <button id="nextPageBtn">다음 페이지</button>
+    <button id="homeBtn">처음으로</button>
+  </div>
+
+  <!-- 학습목표 모달 -->
+  <div id="learnModal" class="modal">
+    <div class="modal-content modal-standard">
+      <span class="close" id="learnClose">&times;</span>
+      <h2>학습목표</h2>
+      <!-- 학습목표에 표시할 이미지 -->
+      <img src="source/1_hsmp.png" alt="학습목표 이미지">
+      <p>여기에 학습 관련 텍스트 내용이 나타납니다.</p>
+    </div>
+  </div>
+  
+  <!-- 음악 듣기 모달 -->
+  <div id="musicModal" class="modal">
+    <div class="modal-content modal-standard">
+      <span class="close" id="musicClose">&times;</span>
+      <h2>음악 듣기</h2>
+      <!-- 동영상 요소 -->
+      <video id="musicVideo" width="100%">
+        <source src="source/1-1.mp4" type="video/mp4">
+        브라우저가 비디오 태그를 지원하지 않습니다.
+      </video>
+      <!-- 사용자 정의 동영상 컨트롤 -->
+      <div class="video-controls">
+        <button id="playBtn">재생</button>
+        <button id="pauseBtn">일시정지</button>
+        <button id="rewindBtn">10초 전</button>
+        <button id="forwardBtn">10초 후</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 목차 모달 (우측에 고정) -->
+  <div id="tocModal" class="modal">
+    <div class="modal-content modal-toc">
+      <span class="close" id="tocClose">&times;</span>
+      <h2>목차</h2>
+      <ul id="tocList">
+        <!-- 목차 항목들이 동적으로 생성됩니다. -->
+      </ul>
+    </div>
+  </div>
+  
+  <script>
+    /* 모달 관련 스크립트 */
+    // 학습목표 모달 열기/닫기
+    const learnBtn = document.getElementById('learnBtn');
+    const learnModal = document.getElementById('learnModal');
+    const learnClose = document.getElementById('learnClose');
+    learnBtn.addEventListener('click', () => { learnModal.style.display = 'block'; });
+    learnClose.addEventListener('click', () => { learnModal.style.display = 'none'; });
+    
+    // 음악 듣기 모달 열기/닫기 및 동영상 컨트롤
+    const musicBtn = document.getElementById('musicBtn');
+    const musicModal = document.getElementById('musicModal');
+    const musicClose = document.getElementById('musicClose');
+    const musicVideo = document.getElementById('musicVideo');
+    musicBtn.addEventListener('click', () => { musicModal.style.display = 'block'; });
+    musicClose.addEventListener('click', () => { 
+      musicModal.style.display = 'none';
+      musicVideo.pause();
+    });
+    
+    // 목차 모달 열기/닫기
+    const tocBtn = document.getElementById('tocBtn');
+    const tocModal = document.getElementById('tocModal');
+    const tocClose = document.getElementById('tocClose');
+    tocBtn.addEventListener('click', () => { tocModal.style.display = 'block'; });
+    tocClose.addEventListener('click', () => { tocModal.style.display = 'none'; });
+    
+    // 모달 바깥 클릭 시 닫기
+    window.addEventListener('click', (event) => {
+      if (event.target === learnModal) { learnModal.style.display = 'none'; }
+      if (event.target === musicModal) { musicModal.style.display = 'none'; musicVideo.pause(); }
+      if (event.target === tocModal) { tocModal.style.display = 'none'; }
+    });
+    
+    // 동영상 사용자 정의 컨트롤
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const rewindBtn = document.getElementById('rewindBtn');
+    const forwardBtn = document.getElementById('forwardBtn');
+    playBtn.addEventListener('click', () => { musicVideo.play(); });
+    pauseBtn.addEventListener('click', () => { musicVideo.pause(); });
+    rewindBtn.addEventListener('click', () => { musicVideo.currentTime = Math.max(0, musicVideo.currentTime - 10); });
+    forwardBtn.addEventListener('click', () => { musicVideo.currentTime = Math.min(musicVideo.duration, musicVideo.currentTime + 10); });
+    
+    /* eBook Viewer 스크립트 */
+    // 이미지 파일 경로 배열 (페이지 추가는 이 배열에 파일 경로만 추가하면 됩니다.)
+    const imageFiles = [
+      "images/page_001.jpg",
+      "images/page_002.jpg",
+      "images/page_003.jpg"
+      // 추가 페이지 파일 경로를 여기에 추가하세요.
+    ];
+    
+    const ebookContainer = document.getElementById("ebook");
+    let currentPage = 0;
+    
+    // 이미지 파일 배열을 순회하며 eBook 페이지 요소 생성
+    imageFiles.forEach((src, index) => {
+      const pageDiv = document.createElement("div");
+      pageDiv.classList.add("page");
+      if (index === 0) { pageDiv.classList.add("active"); }
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = "Page " + (index + 1);
+      pageDiv.appendChild(img);
+      ebookContainer.appendChild(pageDiv);
+    });
+    
+    // eBook 페이지 네비게이션
+    const pages = document.querySelectorAll('.page');
+    
+    // "이전 페이지" 버튼
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    prevPageBtn.addEventListener('click', () => {
+      if (currentPage > 0) {
+        pages[currentPage].classList.remove('active');
+        currentPage--;
+        pages[currentPage].classList.add('active');
+      }
+    });
+    
+    // "다음 페이지" 버튼
+    const nextPageBtn = document.getElementById('nextPageBtn');
+    nextPageBtn.addEventListener('click', () => {
+      if (currentPage < pages.length - 1) {
+        pages[currentPage].classList.remove('active');
+        currentPage++;
+        pages[currentPage].classList.add('active');
+      }
+    });
+    
+    // "처음으로" 버튼: eBook의 첫 페이지로 이동
+    const homeBtn = document.getElementById('homeBtn');
+    homeBtn.addEventListener('click', () => {
+      pages[currentPage].classList.remove('active');
+      currentPage = 0;
+      pages[currentPage].classList.add('active');
+    });
+    
+    /* 목차 생성 */
+    const tocList = document.getElementById('tocList');
+    imageFiles.forEach((src, index) => {
+      const li = document.createElement('li');
+      li.textContent = "Page " + (index + 1);
+      li.addEventListener('click', () => {
+        // 해당 페이지로 이동
+        pages[currentPage].classList.remove('active');
+        currentPage = index;
+        pages[currentPage].classList.add('active');
+        // 목차 모달 닫기
+        tocModal.style.display = 'none';
+      });
+      tocList.appendChild(li);
+    });
+  </script>
+  
+</body>
+</html>
